@@ -9,11 +9,13 @@
   },
   "dependencies": {
     "bootstrap": "3.4.0",
+    "compare-versions": "^3.4.0",
     "d3": "^5.7.0",
     "d3plus": "^1.9.8",
     "dagre": "^0.8.4",
     "dat.gui": "dataarts/dat.gui",
     "file-saver": "^2.0.0",
+    "font-awesome": "^4.7.0",
     "jsoneditor": "^5.26.3",
     "svg.js": "^2.7.1",
     "svg.panzoom.js": "^1.2.0",

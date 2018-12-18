@@ -93,13 +93,12 @@
   let SVG = require('svg.js');
   let dat = require('dat.gui');
   require('svg.panzoom.js');
-  let KerasModelDefaults = require('../assets/keras_model_defaults_v2.js');
-  let KerasModelConfigs = require('../assets/keras_model_configs_v2.js');
   let FileSaver = require('file-saver');
   import "vue-schema-based-json-editor";
   import modal from './modal.vue'
   import JSONEditor from 'jsoneditor'
   import 'jsoneditor/dist/jsoneditor.min.css'
+  let compareVersions = require('compare-versions');
 
   import 'bootstrap/dist/css/bootstrap.css'
   import {
@@ -162,10 +161,6 @@
           layer: []
         },
         merge_layers_ndx: [],
-        keras_args: KerasModelDefaults.keras_args,
-        keras_conf: KerasModelConfigs.keras_conf,
-        keras_choices: KerasModelConfigs.keras_choices,
-        keras_help: KerasModelConfigs.keras_help,
         unnamed_layer_count: 0,
         importing: false,
         exporting: false,
@@ -185,7 +180,9 @@
       }
     },
     methods: {
-
+      getVersion: function(){
+        return l.get(this.json_data,'keras_version',null)
+      },
       clear: function () {
         this.view.clear();
         this.dgraf.g.setGraph({});
@@ -236,10 +233,10 @@
       addModel: function () {
         var name = this.getModelName()
         var class_name = this.json_data.class_name
-        var version = this.json_data.keras_version || "Unknown"
+        var version = this.getVersion() || "Unknown Keras Version"
         this.dgraf.nodes[name] = {
           label: name + "\n" + class_name + "\n" + version,
-          color: this.keras_args[this.json_data.class_name].color,
+          color: this.config.getInfo(this.json_data.class_name).color,
           width: this.nodewidth,
           height: this.nodeheight
         }
@@ -262,7 +259,7 @@
           var class_name = layer.class_name
           this.dgraf.nodes[name] = {
             label: name + "\n" + class_name,
-            color: this.keras_args[class_name].color,
+            color: this.config.getInfo(class_name).color,
             width: this.nodewidth,
             height: this.nodeheight
           }
@@ -306,564 +303,22 @@
       },
 
       ////////NODE EDITOR//////////
-      get_node_initial: function () {
-        return {
-          stringExample: 'a default string example',
-          booleanExample: true,
-          numberExample: 123.4,
-          integerExample: 124,
-          nullExample: null,
-          objectExample: {
-            propertyExample1: '',
-            propertyExample2: 0,
-          },
-          arrayExample: [
-            'default item 1',
-            'default item 2',
-          ],
-          readOnlyExample: 'abc',
-          enumExample: 'enum 1',
-          colorExample: '#000000',
-          textareaExample: '',
-          patternExample: 'abc',
-          imagePreviewExample: 'http://image2.sina.com.cn/bj/art/2004-08-02/U91P52T4D51657F160DT20040802125523.jpg',
-          markdownExample: '###### markdown title and code example\n\n```js\nfunction foo(bar) {\n    console.log(bar);\n}\n```',
-          codeExample: 'function foo(bar) {\n    console.log(bar);\n}\n',
-          itemTitleExample: [{
-              propertyExample1: 'foo',
-              propertyExample2: 1,
-            },
-            {
-              propertyExample1: 'bar',
-              propertyExample2: 2,
-            },
-            {
-              propertyExample1: 'baz',
-              propertyExample2: 3,
-            },
-            {
-              propertyExample1: 'abc',
-              propertyExample2: 4,
-            },
-            {
-              propertyExample1: 'def',
-              propertyExample2: 5,
-            },
-            {
-              propertyExample1: 'ghi',
-              propertyExample2: 6,
-            },
-          ],
-          optionalObjectExample: {},
-          collapsedObjectExample: {},
-          emptyEnumExample: '',
-          uploadFileExample: '',
-          requiredWhenExample: {
-            kind: 'enum 1',
-            propertyExample1: 0,
-            propertyExample3: 0,
-            propertyExample4: '',
-          },
-          checkboxBooleanExample: true,
-          enumTitlesExample: 'enum 1',
-          itemTitleEnumTitleExample: [{
-            propertyExample1: 'bar',
-          }, ],
-          selectBooleanExample: false,
-          select2BooleanExample: false,
-          stringEnumSelectExample: 'enum 1',
-          stringEnumRadioboxExample: 'enum 1',
-          numberEnumSelectExample: 1,
-          numberEnumRadioboxExample: 1,
-          classNameExample: '',
-          enumArrayExample: [],
-          enumArraySelect2Example: [],
-        }
+      get_node_initial: function (lidx) {
+          return this.source_layers[lidx].config
       },
       get_node_schema: function (classs) {
-        return {
-          "type": "object",
-          "title": "GUI:",
-          "description": "a description example",
-          "properties": {
-            "stringExample": {
-              "type": "string",
-              "title": "A string example",
-              "description": "a string description example",
-              "default": "a default string example",
-              "minLength": 15,
-              "maxLength": 20,
-              "propertyOrder": 1
-            },
-            "booleanExample": {
-              "type": "boolean",
-              "title": "A boolean example",
-              "description": "a boolean description example",
-              "default": true,
-              "propertyOrder": 2
-            },
-            "numberExample": {
-              "type": "number",
-              "title": "A number example",
-              "description": "a number description example",
-              "default": 123.4,
-              "minimum": 10,
-              "exclusiveMinimum": true,
-              "maximum": 1000,
-              "exclusiveMaximum": true,
-              "propertyOrder": 3
-            },
-            "integerExample": {
-              "type": "integer",
-              "title": "A integer example",
-              "description": "a integer description example",
-              "default": 124,
-              "multipleOf": 2,
-              "propertyOrder": 4
-            },
-            "nullExample": {
-              "type": "null",
-              "title": "A null example",
-              "description": "a null description example",
-              "default": null,
-              "propertyOrder": 5
-            },
-            "objectExample": {
-              "type": "object",
-              "title": "A object example",
-              "description": "a object description example",
-              "properties": {
-                "propertyExample1": {
-                  "type": "string"
-                },
-                "propertyExample2": {
-                  "type": "number"
-                }
-              },
-              "default": {},
-              "required": [
-                "propertyExample1",
-                "propertyExample2"
-              ],
-              "propertyOrder": 6
-            },
-            "arrayExample": {
-              "type": "array",
-              "title": "A array example",
-              "description": "a array description example",
-              "items": {
-                "type": "string",
-                "maxLength": 15
-              },
-              "default": [
-                "default item 1",
-                "default item 2"
-              ],
-              "minItems": 1,
-              "uniqueItems": true,
-              "propertyOrder": 7
-            },
-            "readOnlyExample": {
-              "type": "string",
-              "readonly": true,
-              "default": "abc",
-              "propertyOrder": 8
-            },
-            "readOnlyAndOptionalExample": {
-              "type": "string",
-              "readonly": true,
-              "default": "abc",
-              "propertyOrder": 9
-            },
-            "enumExample": {
-              "type": "string",
-              "enum": [
-                "enum 1",
-                "enum 2"
-              ],
-              "propertyOrder": 10
-            },
-            "optionalExample": {
-              "type": "string",
-              "propertyOrder": 11
-            },
-            "optionalAndDefaultExample": {
-              "type": "string",
-              "default": "abc",
-              "propertyOrder": 12
-            },
-            "booleanOptionalExample": {
-              "type": "boolean",
-              "propertyOrder": 13
-            },
-            "colorExample": {
-              "type": "string",
-              "format": "color",
-              "default": "#000000",
-              "propertyOrder": 14
-            },
-            "textareaExample": {
-              "type": "string",
-              "format": "textarea",
-              "propertyOrder": 15
-            },
-            "patternExample": {
-              "type": "string",
-              "pattern": "^[A-z]{3}$",
-              "default": "abc",
-              "propertyOrder": 16
-            },
-            "imagePreviewExample": {
-              "type": "string",
-              "default": "http://image2.sina.com.cn/bj/art/2004-08-02/U91P52T4D51657F160DT20040802125523.jpg",
-              "propertyOrder": 17
-            },
-            "markdownExample": {
-              "type": "string",
-              "format": "markdown",
-              "default": "###### markdown title and code example\n\n```js\nfunction foo(bar) {\n    console.log(bar);\n}\n```",
-              "propertyOrder": 18
-            },
-            "codeExample": {
-              "type": "string",
-              "format": "code",
-              "default": "function foo(bar) {\n    console.log(bar);\n}\n",
-              "propertyOrder": 19
-            },
-            "itemTitleExample": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "propertyExample1": {
-                    "type": "string"
-                  },
-                  "propertyExample2": {
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "propertyExample1",
-                  "propertyExample2"
-                ],
-                "collapsed": true
-              },
-              "default": [{
-                  "propertyExample1": "foo",
-                  "propertyExample2": 1
-                },
-                {
-                  "propertyExample1": "bar",
-                  "propertyExample2": 2
-                },
-                {
-                  "propertyExample1": "baz",
-                  "propertyExample2": 3
-                },
-                {
-                  "propertyExample1": "abc",
-                  "propertyExample2": 4
-                },
-                {
-                  "propertyExample1": "def",
-                  "propertyExample2": 5
-                },
-                {
-                  "propertyExample1": "ghi",
-                  "propertyExample2": 6
-                }
-              ],
-              "propertyOrder": 20
-            },
-            "optionalObjectExample": {
-              "type": "object",
-              "properties": {
-                "propertyExample1": {
-                  "type": "string"
-                },
-                "propertyExample2": {
-                  "type": "number"
-                }
-              },
-              "maxProperties": 1,
-              "minProperties": 0,
-              "propertyOrder": 21
-            },
-            "collapsedObjectExample": {
-              "type": "object",
-              "properties": {
-                "propertyExample1": {
-                  "type": "string"
-                }
-              },
-              "collapsed": true,
-              "propertyOrder": 22
-            },
-            "emptyEnumExample": {
-              "type": "string",
-              "enum": [],
-              "propertyOrder": 23
-            },
-            "uploadFileExample": {
-              "type": "string",
-              "format": "base64",
-              "propertyOrder": 24
-            },
-            "requiredWhenExample": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "type": "string",
-                  "enum": [
-                    "enum 1",
-                    "enum 2",
-                    "enum 3"
-                  ]
-                },
-                "propertyExample1": {
-                  "type": "number",
-                  "requiredWhen": [
-                    "kind",
-                    "===",
-                    "enum 1"
-                  ]
-                },
-                "propertyExample2": {
-                  "type": "string",
-                  "requiredWhen": [
-                    "kind",
-                    "===",
-                    "enum 2"
-                  ]
-                },
-                "propertyExample3": {
-                  "type": "number",
-                  "requiredWhen": [
-                    "kind",
-                    "in",
-                    [
-                      "enum 1",
-                      "enum 2"
-                    ]
-                  ]
-                },
-                "propertyExample4": {
-                  "type": "string"
-                },
-                "propertyExample5": {
-                  "type": "string"
-                },
-                "propertyExample6": {
-                  "type": "string",
-                  "optionalWhen": [
-                    "kind",
-                    "===",
-                    "enum 2"
-                  ]
-                }
-              },
-              "required": [
-                "kind",
-                "propertyExample4"
-              ],
-              "propertyOrder": 25
-            },
-            "checkboxBooleanExample": {
-              "type": "boolean",
-              "default": true,
-              "format": "checkbox",
-              "propertyOrder": 26
-            },
-            "enumTitlesExample": {
-              "type": "string",
-              "enum": [
-                "enum 1",
-                "enum 2"
-              ],
-              "enumTitles": [
-                "enum title 1",
-                "enum title 2"
-              ],
-              "propertyOrder": 27
-            },
-            "itemTitleEnumTitleExample": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "propertyExample1": {
-                    "type": "string",
-                    "enum": [
-                      "foo",
-                      "bar"
-                    ],
-                    "enumTitles": [
-                      "foo title",
-                      "bar title"
-                    ]
-                  }
-                },
-                "required": [
-                  "propertyExample1"
-                ]
-              },
-              "default": [{
-                "propertyExample1": "bar"
-              }],
-              "propertyOrder": 28
-            },
-            "selectBooleanExample": {
-              "type": "boolean",
-              "default": false,
-              "format": "select",
-              "propertyOrder": 28
-            },
-            "select2BooleanExample": {
-              "type": "boolean",
-              "default": false,
-              "format": "select2",
-              "propertyOrder": 30
-            },
-            "stringEnumSelectExample": {
-              "type": "string",
-              "format": "select",
-              "enum": [
-                "enum 1",
-                "enum 2"
-              ],
-              "enumTitles": [
-                "enum title 1",
-                "enum title 2"
-              ],
-              "propertyOrder": 31
-            },
-            "stringEnumRadioboxExample": {
-              "type": "string",
-              "format": "radiobox",
-              "enum": [
-                "enum 1",
-                "enum 2"
-              ],
-              "enumTitles": [
-                "enum title 1",
-                "enum title 2"
-              ],
-              "propertyOrder": 32
-            },
-            "numberEnumSelectExample": {
-              "type": "number",
-              "format": "select",
-              "enum": [
-                1,
-                2
-              ],
-              "enumTitles": [
-                "one",
-                "two"
-              ],
-              "propertyOrder": 33
-            },
-            "numberEnumRadioboxExample": {
-              "type": "number",
-              "format": "radiobox",
-              "enum": [
-                1,
-                2
-              ],
-              "enumTitles": [
-                "one",
-                "two"
-              ],
-              "propertyOrder": 34
-            },
-            "classNameExample": {
-              "type": "string",
-              "className": "custom-class-string",
-              "propertyOrder": 35
-            },
-            "enumArrayExample": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "enum": [
-                "foo",
-                "bar"
-              ],
-              "enumTitle": [
-                "foo title",
-                "bar title"
-              ],
-              "propertyOrder": 36
-            },
-            "enumArraySelect2Example": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "enum": [
-                "foo",
-                "bar"
-              ],
-              "enumTitle": [
-                "foo title",
-                "bar title"
-              ],
-              "format": "select2",
-              "propertyOrder": 37
-            }
-          },
-          "required": [
-            "stringExample",
-            "booleanExample",
-            "numberExample",
-            "integerExample",
-            "nullExample",
-            "objectExample",
-            "arrayExample",
-            "readOnlyExample",
-            "enumExample",
-            "colorExample",
-            "textareaExample",
-            "patternExample",
-            "imagePreviewExample",
-            "markdownExample",
-            "codeExample",
-            "performanceExample",
-            "itemTitleExample",
-            "optionalObjectExample",
-            "propertyOrderExample",
-            "collapsedObjectExample",
-            "emptyEnumExample",
-            "uploadFileExample",
-            "requiredWhenExample",
-            "checkboxBooleanExample",
-            "enumTitlesExample",
-            "itemTitleEnumTitleExample",
-            "selectBooleanExample",
-            "select2BooleanExample",
-            "stringEnumSelectExample",
-            "stringEnumRadioboxExample",
-            "numberEnumSelectExample",
-            "numberEnumRadioboxExample",
-            "classNameExample",
-            "enumArrayExample",
-            "enumArraySelect2Example"
-          ]
-        }
+       return this.config.getSchema(classs)
       },
       node_edit: function (lidx) {
-        if (lidx != "model") {
 
           var node_class = this.source_layers[lidx].class_name
 
-          this.node_initial = this.get_node_initial() //data
+          this.node_initial = this.get_node_initial(lidx) 
 
-          this.node_schema = this.get_node_schema(node_class) //schema
+          this.node_schema = this.get_node_schema(node_class) 
 
           this.node_editing = true;
 
-        }
       },
       saved_node: function () {
 
@@ -1086,6 +541,15 @@
 
     },
     computed: {
+      config: function(){
+        //TODO: change first output to the new keras 2.0 config file
+        if(this.getVersion()){
+          return (compareVersions(this.getVersion(),"2.0.0") >= 0) ? require('../assets/keras_model_configs.js') :  require('../assets/keras_model_configs.js');
+
+        }else{ //LOAD THE MOST RECENT
+          return require('../assets/keras_model_configs.js');
+        }
+      },
       json_data: function () {
         return this.tmp_json ? this.tmp_json : this.json
       },

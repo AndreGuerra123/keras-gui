@@ -1809,22 +1809,22 @@ KerasModelConf.getProperties = function (obj_class) {
 
 KerasModelConf.getClassDescription = function (obj_class) {
 
-	},
+}
 
-	KerasModelConf.getClassProperties = function (obj_class) {
+KerasModelConf.getClassProperties = function (obj_class) {
 
-	},
+}
 
-	KerasModelConf.getSchema = function (class_name, obj_class) {
+KerasModelConf.getSchema = function (class_name, obj_class) {
 
-		return {
-			"type": "object",
-			"title": class_name + ' - ' + KerasModelConf.getClassMeta(obj_class),
-			"description": KerasModelConf.getClassDescription(obj_class),
-			"properties": KerasModelConf.getProperties(obj_class)
-		}
-
+	return {
+		"type": "object",
+		"title": class_name + ' - ' + KerasModelConf.getClassMeta(obj_class),
+		"description": KerasModelConf.getClassDescription(obj_class),
+		"properties": KerasModelConf.getProperties(obj_class)
 	}
+
+}
 
 
 module.exports = KerasModelConf;

@@ -1,7 +1,7 @@
-let l = require('lodash');
-let KerasModelConf = {}
 
-KerasModelConf.help = {
+let KMC = {}
+
+KMC.help = {
 	optimizer: "str (name of optimizer) or optimizer object. See optimizers.",
 	loss: "str (name of objective function) or objective function. See objectives.",
 	metrics: "list of metrics to be evaluated by the model during training and testing. Typically you will use  metrics=['accuracy']. See metrics.",
@@ -91,7 +91,7 @@ KerasModelConf.help = {
 
 }
 
-KerasModelConf.enums = {
+KMC.enums = {
 	Models: ['Model', "Sequential"],
 	Layers: ["InputLayer",
 		"Dense",
@@ -358,7 +358,7 @@ KerasModelConf.enums = {
 	]
 }
 
-KerasModelConf.info = {
+KMC.info = {
 	InputLayer: {
 		help: "A simple tensor input layer (batchsize, width, height, channels).",
 		color: "#00ff00",
@@ -1029,7 +1029,7 @@ KerasModelConf.info = {
 	}
 }
 
-KerasModelConf.meta = {
+KMC.meta = {
 
 	"InputLayer": "Core Layer",
 	"Dense": "Core Layer",
@@ -1117,7 +1117,7 @@ KerasModelConf.meta = {
 	"Sequential": "Model"
 }
 
-KerasModelConf.default_schemas = {
+KMC.default_schemas = {
 	a_left_init: {
 		"default": "uniform",
 		"type": "string"
@@ -1481,7 +1481,7 @@ KerasModelConf.default_schemas = {
 }
 
 
-KerasModelConf.override_schemas = {
+KMC.override_schemas = {
 	Lambda: {
 		output_shape: {
 			"type": "string",
@@ -1656,175 +1656,68 @@ KerasModelConf.override_schemas = {
 	}
 }
 
-KerasModelConf.layer_core_schema = {
-	class_name: {
-		"type": "string",
-		"required": true,
-		"default": "Dense",
-		"enum": KerasModelConf.enums['Layers']
-	},
+KMC.model_config_core_schema = {
+
 	name: {
 		"type": "string",
-		"required": false,
-		"default": "dense_"
-	},
-	inbound_nodes: {
-		"type": "array",
-		"required": true,
-		"default": []
-	},
-	trainable: {
-		"type": "boolean",
-		"required": false,
-		"default": true
-	}
-
-}
-
-KerasModelConf.optimizer_core_schema = {
-	class_name: {
-		"type": "string",
-		"required": true,
-		"default": "SGD",
-		"enum": KerasModelConf.enums['Optimizers']
-	},
-	name: {
-		"type": "string",
-		"required": false,
-		"default": "sgd_"
-	},
-	trainable: {
-		"type": "boolean",
-		"required": false,
-		"default": true
-	}
-}
-
-KerasModelConf.model_core_schema = {
-	class_name: {
-		"type": "string",
-		"required": true,
-		"default": "Model",
-		"enum": KerasModelConf.enums['Models']
-	},
-	name: {
-		"type": "string",
-		"required": false,
 		"default": "model_"
 	},
 	inbound_nodes: {
 		"type": "array",
-		"required": false,
 		"default": []
 	},
 	trainable: {
 		"type": "boolean",
-		"required": false,
 		"default": true
 	}
 }
-KerasModelConf.getInfo = function (obj_class) {
 
-	let layerinfo = l.get(KerasModelConf.info, obj_class, null) || {
-		help: "No description provided.",
-		color: "#ffffff",
-		args: []
-	}
-	layerinfo.meta = l.get(KerasModelConf.meta, obj_class, null) || "Unknown meta-class."
-	return layerinfo;
-}
-
-KerasModelConf.isModel = function (obj_class) {
-	return l.some(KerasModelConf.enums['Models'], obj_class);
-}
-
-KerasModelConf.isLayer = function (obj_class) {
-	return l.some(KerasModelConf.enums['Layers'], obj_class);
-}
-
-KerasModelConf.isOptimizer = function (obj_class) {
-	return l.some(KerasModelConf.enums['Optimizers'], obj_class);
-}
-
-KerasModelConf.getOverrideArguments = function (obj_class) {
-	return l.get(KerasModelConf.override_schemas, obj_class, {})
-}
-KerasModelConf.getEnumeration = function (arg) {
-	return l.get(KerasModelConf.enums, arg, null)
-}
-KerasModelConf.getDescription = function (arg) {
-	return l.get(KerasModelConf.help, arg, null)
-}
-KerasModelConf.getCoreSchema = function (obj_class) {
-	if (KerasModelConf.isModel(obj_class)) {
-		return KerasModelConf.model_core_schema;
-
-	} else if (KerasModelConf.isLayer(obj_class)) {
-		return KerasModelConf.layer_core_schema;
-
-	} else if (KerasModelConf.isOptimizer(obj_class)) {
-		return KerasModelConf.optimizer_core_schema;
-
-	} else {
-		return {}
-	}
-}
-KerasModelConf.getArguments = function (obj_class) {
-	return l.get(KerasModelConf.getInfo(obj_class), "args", [])
-}
-KerasModelConf.getDefaultSchema = function (aa) {
-
-	let toreturn = {};
-	l.map(aa, function (a) {
-		var tmp_arg_schema = l.get(KerasModelConf.default_schemas, a, {})
-		if (KerasModelConf.getEnumeration(a)) {
-			tmp_arg_schema.enum = KerasModelConf.getEnumeration(a)
-		}
-		if (KerasModelConf.getDescription(a)) {
-			tmp_arg_schema.description = KerasModelConf.getDescription(a)
-		}
-		toreturn[a] = tmp_arg_schema
-	})
-
-	return toreturn;
-}
-
-KerasModelConf.getOverrideSchema = function (obj_class) {
-	return l.get(KerasModelConf.override_schema, obj_class, {})
-}
-
-KerasModelConf.getProperties = function (obj_class) {
-
-	let cs = KerasModelConf.getCoreSchema()
-
-	let aa = KerasModelConf.getArguments(obj_class)
-
-	let ds = KerasModelConf.getDefaultSchema(aa)
-
-	let os = KerasModelConf.getOverrideSchema()
-
-	return l.merge(cs, ds, os)
-
-}
-
-KerasModelConf.getClassDescription = function (obj_class) {
-
-}
-
-KerasModelConf.getClassProperties = function (obj_class) {
-
-}
-
-KerasModelConf.getSchema = function (class_name, obj_class) {
-
-	return {
-		"type": "object",
-		"title": class_name + ' - ' + KerasModelConf.getClassMeta(obj_class),
-		"description": KerasModelConf.getClassDescription(obj_class),
-		"properties": KerasModelConf.getProperties(obj_class)
+KMC.layer_config_core_schema = {
+	name: {
+		"type": "string",
+		"default": "dense_"
+	},
+	inbound_nodes: {
+		"type": "array",
+		"default": []
+	},
+	trainable: {
+		"type": "boolean",
+		"default": true
 	}
 
 }
 
+KMC.optimizer_config_core_schema = {
+	name: {
+		"type": "string",
+		"default": "sgd_"
+	},
+	trainable: {
+		"type": "boolean",
+		"default": true
+	}
+}
 
-module.exports = KerasModelConf;
+
+KMC.model_meta_core_schema = {
+
+	keras_version: {
+		"type": "string",
+		"default": "Unknown kERA Version"
+	}
+}
+
+KMC.layer_meta_core_schema = {
+
+
+}
+
+KMC.optimizer_meta_core_schema = {
+	
+}
+
+
+
+
+module.exports = KMC;

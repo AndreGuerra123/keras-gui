@@ -11,7 +11,7 @@
             <btn type="primary" class="navbar-btn" @click="help_json">Help</btn>
           </btn-group>
         </navbar-nav>
-        <navbar-nav right>
+        <navbar-nav right v-if="new_data">
           <btn-group>
             <btn type="danger" class="navbar-btn" @click="save_json">Save</btn>
             <btn type="danger" class="navbar-btn" @click="reset_json">Reset</btn>
@@ -75,12 +75,12 @@
       <modal :show="node_editing" @close="close_node_editor">
         <h2 slot="header">Node Editor</h2>
         <div slot=body>
-          <json-editor :schema="node_schema" :initial-value="node_initial" @update-value="saved_node($event)" theme="bootstrap3"
-            icon="fontawesome4"></json-editor>
+          <json-editor :schema="node_schema" :initial-value="node_data" @update-value="updatedNode($event)" theme="bootstrap3"
+            icon="bootstrap3" noSelect2="true"></json-editor>
         </div>
         <div slot="footer">
           <btn type="default" @click="close_node_editor">Close</btn>
-          <btn type="primary" @click="saved_node">Save Node</btn>
+          <btn type="primary" @click="save_node_editor">Save Node</btn>
         </div>
       </modal>
     </div>
@@ -101,12 +101,14 @@
   let compareVersions = require('compare-versions');
 
   import 'bootstrap/dist/css/bootstrap.css'
+  import 'font-awesome/css/font-awesome.css'
   import {
     Navbar,
     NavbarNav,
     Btn,
     BtnGroup,
   } from 'uiv'
+import { isArray } from 'util';
 
   export default {
     props: {
@@ -172,16 +174,15 @@
         tmp_json: null,
         filename: null,
         node_editing: null,
-        node_schema: {
-          type: Object
-        },
-        node_initial: {}
+        node_data: null,
+        node_schema: null,
+        new_node_data: null
 
       }
     },
     methods: {
-      getVersion: function(){
-        return l.get(this.json_data,'keras_version',null)
+      getVersion: function () {
+        return l.get(this.json_data, 'keras_version', null)
       },
       clear: function () {
         this.view.clear();
@@ -236,7 +237,7 @@
         var version = this.getVersion() || "Unknown Keras Version"
         this.dgraf.nodes[name] = {
           label: name + "\n" + class_name + "\n" + version,
-          color: this.config.getInfo(this.json_data.class_name).color,
+          color: this.get_info(this.json_data.class_name).color,
           width: this.nodewidth,
           height: this.nodeheight
         }
@@ -259,7 +260,7 @@
           var class_name = layer.class_name
           this.dgraf.nodes[name] = {
             label: name + "\n" + class_name,
-            color: this.config.getInfo(class_name).color,
+            color: this.get_info(class_name).color,
             width: this.nodewidth,
             height: this.nodeheight
           }
@@ -301,53 +302,26 @@
         var det = this.dgraf.g.graph()
         this.dgraf.svgd.size(det.width, det.height)
       },
-
-      ////////NODE EDITOR//////////
-      get_node_initial: function (lidx) {
-          return this.source_layers[lidx].config
-      },
-      get_node_schema: function (classs) {
-       return this.config.getSchema(classs)
-      },
-      node_edit: function (lidx) {
-
-          var node_class = this.source_layers[lidx].class_name
-
-          this.node_initial = this.get_node_initial(lidx) 
-
-          this.node_schema = this.get_node_schema(node_class) 
-
-          this.node_editing = true;
-
-      },
-      saved_node: function () {
-
-        this.close_node_editing()
-
-        //TODO:  new data ?
-        //this.tmp_data = this.extractAll()
-
-        this.render()
-
-      },
-      close_node_editor: function () {
-        this.node_schema = {
-          type: Object
+      convertIdxLayer: function (i) {
+        if (i === 0) {
+          return "model"
+        } else {
+          return i - 1
         }
-        this.node_initial = {};
-        this.node_editing = false;
+      },
+      convertLayerIdx: function(l){
+        if(l == "model"){
+          return 0
+        }else{
+          return l+1
+        }
       },
       draw_node: function (svgd, node, j) {
 
-        var r;
-        if (j === 0) {
-          j = "model"
-          r = Math.min(node.width, node.height) / 2
-        } else {
-          j--
-        }
+        let r = Math.min(node.width, node.height) / 2
+        let idx = this.convertIdxLayer(j)
+   
         var group = svgd.group().attr({
-          "data-index": j,
           "stroke-width": 0.5
         })
         group.rect(node.width, node.height).cx(node.x).cy(node.y).fill(node.color).attr({
@@ -363,14 +337,146 @@
         if (this.rankdir == "LR") txt.rotate(-90) ///initial
 
         //this adds the functionality of clicking in a node and a microeditor opens for edition.
-        group.click(() => {
-          this.node_edit(j)
+        group.dblclick(() => {
+          this.node_edit(idx)
         });
+
+        //Add functionality
+        if (idx != "model") {
+          var add = group.group()
+          add.text("+").attr("font-size", "40px")
+          add.cx(node.x + node.width / 2).cy(node.y - (node.height / 2) + 20)
+          if (this.rankdir == "LR") {
+            add.rotate(-90)
+          }
+          add.click(() => {
+            this.add_layer(j)
+          });
+        }
+
+        //Remove funcionality
+        if (idx != "model") {
+
+        var addD = group.group()
+        addD.text("-").attr("font-size", "40px")
+        addD.cx(node.x + node.width / 2).cy(node.y - 15)
+        if (this.rankdir == "LR") {
+          addD.rotate(-90)
+        }
+        addD.click(()=>{
+          this.remove_layer(idx)
+        });
+        }
+
+        //Add below functionality
+
+        var addL = group.group()
+        addL.circle(25).attr({
+          fill: "#fff",
+          "stroke-width": 2
+        })
+        addL.path(
+          "m5,10.6446 l3.57256,4.51989l3.57256,4.51989l3.57256,-4.51989l3.57256,-4.51989l-4.96673,0l0,-7.32094l-4.35678,0l0,7.32094l-4.96673,0z"
+        )
+        addL.cx(node.x + node.width / 2).cy(node.y + (node.height / 2) - 25)
+        if (this.rankdir == "LR") {
+          addL.rotate(-90)
+        }
+        addL.click(() => {
+          this.add_layer_below(idx)
+        })
 
         return group
 
 
       },
+      get_above_layer: function(){
+        return this.layer_ndx != 0 ? this.layer_ndx - 1 : "model"
+      },
+      
+      add_layer_below: function (lndx) { //TODO: Identify model name (Note this approach in overall may be problematic since identifiying nodes by name (when name may be missing seems risky))
+        this.layer_ndx = lndx;
+        let current_name = lndx!="model" ? this.source_layers[lndx].config.name : "" 
+        let current_length = this.tmp_json.config.length
+        let new_layer = {
+          "class_name": "Dense",
+          "trainable": true,
+          "config": {
+            "b_constraint": null,
+            "bias": true,
+            "init": "uniform",
+            "output_dim": null,
+            "input_dim": null,
+            "W_regularizer": null,
+            "activity_regularizer": null,
+            "W_constraint": null,
+            "trainable": true,
+            "name": "dense_" + (current_length),
+            "b_regularizer": null,
+            "activation": "tanh"
+          },
+          "name": "dense_" + (current_length) ,
+          "inbound_nodes": [
+            [
+              [
+                current_name,
+                0,
+                0
+              ]
+            ]
+          ]
+        
+        }
+
+        this.tmp_json = Object.create(this.tmp_json)
+        this.tmp_json.config.push(new_layer)
+        this.render()
+      },
+      add_layer: function (lndx) { //TODO: Identify model name (Note this approach in overall may be problematic since identifiying nodes by name (when name may be missing seems risky))
+        this.layer_ndx = lndx;
+        let above_name = (lndx != "model") ? this.source_layers[lndx-2].config.name : this.tmp_json.config.model.name
+        let current_length = this.tmp_json.config.length
+        let new_layer = {
+          "class_name": "Dense",
+          "trainable": true,
+          "config": {
+            "b_constraint": null,
+            "bias": true,
+            "init": "uniform",
+            "output_dim": null,
+            "input_dim": null,
+            "W_regularizer": null,
+            "activity_regularizer": null,
+            "W_constraint": null,
+            "trainable": true,
+            "name": "dense_" + (current_length),
+            "b_regularizer": null,
+            "activation": "tanh"
+          },
+          "name": "dense_" + (current_length) ,
+          "inbound_nodes": [
+            [
+              [
+                above_name,
+                0,
+                0
+              ]
+            ]
+          ]
+        
+        }
+
+        this.tmp_json = Object.create(this.tmp_json)
+        this.tmp_json.config.push(new_layer)
+        this.render()
+      },
+
+      remove_layer: function (lndx) {//TODO: How to implement?
+        this.tmp_json = Object.create(this.tmp_json)
+        
+        this.render()
+      },
+
       draw_edge: function (svgd, points, marker) {
         var str = "M " + points[0].x + ' ' + points[0].y + 'C '
         var len = points.length
@@ -436,6 +542,139 @@
       render: function () {
         this.buildGraphModel();
         this.showGraph();
+      },
+
+      ////////NODE EDITOR//////////
+
+      get_info: function (classs) {
+        let layerinfo = l.get(this.config.info, classs, null) || {
+          help: "No description provided.",
+          color: "#ffffff",
+          args: []
+        }
+        layerinfo.meta = l.get(this.config.meta, classs, null) || "Unknown meta-class."
+        return layerinfo
+      },
+
+      is_model_node: function (classs) {
+        return l.some(this.config.enums.Models, (x) => x === classs);
+
+      },
+
+      is_layer_node: function (classs) {
+        return l.some(this.config.enums.Layers, (x) => x === classs);
+
+      },
+
+      is_optimizer_node: function (classs) {
+        return l.some(this.config.enums.Optimizers, (x) => x === classs);
+      },
+
+      get_arg_choices: function (arg) {
+        return l.get(this.config.enums, arg, null)
+      },
+
+      get_arg_description: function (arg) {
+        return l.get(this.config.help, arg, null)
+      },
+      get_core_config_props: function (classs) {
+        if (this.is_model_node(classs)) {
+          return this.config.model_config_core_schema;
+        } else if (this.is_layer_node(classs)) {
+          return this.config.layer_config_core_schema;
+        } else if (this.is_optimizer_node(classs)) {
+          return this.config.optimizer_config_core_schema;
+        } else {
+          return {}
+        }
+      },
+      get_default_config_props: function (classs) {
+        let args_props = {};
+        let aa = l.get(this.get_info(classs), "args", [])
+        l.map(aa, (a) => {
+          let arg_props = l.get(this.config.default_schemas, a, {})
+          this.get_arg_choices(a) ? l.set(arg_props, 'enum', this.get_arg_choices(a)) : ""
+          this.get_arg_description(a) ? l.set(arg_props, 'description', l.upperFirst(this.get_arg_description(a))) :
+            ""
+          args_props[a] = arg_props
+        })
+        return args_props;
+      },
+
+      get_override_config_props: function (classs) {
+        return l.get(this.config.override_schema, classs, {})
+      },
+
+      get_config_props: function (classs) {
+        return {
+          "config": {
+            "type": "object",
+            "title": "Configuration",
+            "description": "Edit this node configuration.",
+            "properties": l.merge(this.get_core_config_props(classs), this.get_default_config_props(classs), this.get_override_config_props(
+              classs))
+          }
+        }
+      },
+      get_class_name_props: function () {
+        return {
+          "class_name": {
+            "type": "string",
+            "title": "Class",
+            "enum": l.union(this.config.enums.Models, this.config.enums.Layers, this.config.enums.Optimizers)
+          }
+        }
+      },
+      get_meta_class_props: function (classs) {
+        if (this.is_model_node(classs)) {
+          return this.config.model_meta_core_schema;
+        } else if (this.is_layer_node(classs)) {
+          return this.config.layer_meta_core_schema;
+        } else if (this.is_optimizer_node(classs)) {
+          return this.config.optimizer_meta_core_schema;
+        } else {
+          return {}
+        }
+      },
+      get_node_schema: function (node_data) {
+        var classs = node_data.class_name
+        var info = this.get_info(classs)
+        var name = node_data.config.name
+
+        return {
+          "type": "object",
+          "title": l.upperFirst(l.join([this.layer_ndx, name, classs, info.meta], " :: ")),
+          "description": l.upperFirst(info.help),
+          "properties": l.merge(this.get_class_name_props(), this.get_meta_class_props(classs), this.get_config_props(
+            classs)),
+          "required": ["class_name", "config"]
+
+        }
+      },
+      node_edit: function (lidx) {
+        this.layer_ndx = lidx
+        this.node_data = this.source_layers[this.layer_ndx] //initialize node_data
+        this.node_schema = this.get_node_schema(this.node_data), //initialize node_schema
+          this.node_editing = true;
+      },
+      updatedNode: function (e) {
+        this.new_node_data = e.value
+      },
+      save_node_editor: function () {
+        var classs = l.get(this.new_node_data, "class_name", null)
+        this.tmp_json = Object.create(this.tmp_json)
+        if (this.is_model_node(classs)) {
+          this.tmp_json = l.merge(this.tmp_json, this.new_node_data)
+        }
+        this.tmp_json.config[this.layer_ndx] = this.new_node_data;
+
+
+        this.close_node_editor()
+      },
+      close_node_editor: function () {
+        this.node_editing = false;
+        this.render()
+
       },
       /////////IMPORTER//////////
       import_json: function () {
@@ -510,8 +749,7 @@
 
       },
       resetted: function () {
-        this.tmp_data = null;
-        this.json_data = this.json;
+        this.tmp_json = this.json
         this.close_resetter();
         this.render();
       },
@@ -524,7 +762,6 @@
       ///////////HELP//////////////
       help_json: function () {
         this.clearpops()
-
         this.helping = true;
       },
       close_helper: function () {
@@ -541,13 +778,14 @@
 
     },
     computed: {
-      config: function(){
+      config: function () {
         //TODO: change first output to the new keras 2.0 config file
-        if(this.getVersion()){
-          return (compareVersions(this.getVersion(),"2.0.0") >= 0) ? require('../assets/keras_model_configs.js') :  require('../assets/keras_model_configs.js');
+        if (this.getVersion()) {
+          return (compareVersions(this.getVersion(), "2.0.0") >= 0) ? require('../assets/keras_config.js') : require(
+            '../assets/keras_config.js');
 
-        }else{ //LOAD THE MOST RECENT
-          return require('../assets/keras_model_configs.js');
+        } else { //LOAD THE MOST RECENT
+          return require('../assets/keras_config.js');
         }
       },
       json_data: function () {
@@ -589,6 +827,7 @@
       }
     },
     mounted() {
+      this.tmp_json = this.json
       this.keraseditor = new JSONEditor(this.$refs.keraseditor, {})
       this.render()
     },
@@ -610,8 +849,13 @@
 
   .kerastoolbar {
     width: 30%;
-    margin: 5% auto;
+    margin: 1% auto;
     background-color: transparent;
     border-color: transparent;
+  }
+
+  #node-editor {
+    max-width: 50%;
+    max-height: 50%;
   }
 </style>

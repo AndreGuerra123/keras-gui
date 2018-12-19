@@ -1,24 +1,6 @@
 <template>
   <transition appear>
     <div id="kerasgui">
-      <navbar fixed-bottom class="kerastoolbar">
-        <navbar-nav left>
-          <btn-group>
-            <btn type="info" class="navbar-btn" @click="import_json">Import</btn>
-            <btn type="info" class="navbar-btn" @click="export_json">Export</btn>
-            <btn type="info" class="navbar-btn" @click="edit_json">Edit</btn>
-            <btn type="info" class="navbar-btn" @click="refresh_json">Refresh</btn>
-            <btn type="primary" class="navbar-btn" @click="help_json">Help</btn>
-          </btn-group>
-        </navbar-nav>
-        <navbar-nav right v-if="new_data">
-          <btn-group>
-            <btn type="danger" class="navbar-btn" @click="save_json">Save</btn>
-            <btn type="danger" class="navbar-btn" @click="reset_json">Reset</btn>
-          </btn-group>
-        </navbar-nav>
-      </navbar>
-
       <div id="kerasviewer" ref="kerasviewer"></div>
       <modal :show="importing" @close="close_importer">
         <h2 slot="header">Import File</h2>
@@ -83,6 +65,19 @@
           <btn type="primary" @click="save_node_editor">Save Node</btn>
         </div>
       </modal>
+      <btn-toolbar class="kerastoolbar">
+         <btn-group>
+            <btn type="info" class="navbar-btn" @click="import_json">Import</btn>
+            <btn type="info" class="navbar-btn" @click="export_json">Export</btn>
+            <btn type="info" class="navbar-btn" @click="edit_json">Edit</btn>
+            <btn type="info" class="navbar-btn" @click="refresh_json">Refresh</btn>
+            <btn type="primary" class="navbar-btn" @click="help_json">Help</btn>
+          </btn-group>
+          <btn-group v-if="new_data">
+            <btn type="danger" class="navbar-btn" @click="save_json">Save</btn>
+            <btn type="danger" class="navbar-btn" @click="reset_json">Reset</btn>
+          </btn-group>
+      </btn-toolbar>
     </div>
   </transition>
 </template>
@@ -103,10 +98,9 @@
   import 'bootstrap/dist/css/bootstrap.css'
   import 'font-awesome/css/font-awesome.css'
   import {
-    Navbar,
-    NavbarNav,
     Btn,
     BtnGroup,
+    BtnToolbar
   } from 'uiv'
 import { isArray } from 'util';
 
@@ -151,10 +145,9 @@ import { isArray } from 'util';
     },
     components: {
       modal,
-      Navbar,
-      NavbarNav,
       Btn,
-      BtnGroup
+      BtnGroup,
+      BtnToolbar
     },
     data: function () {
       return {
